@@ -112,7 +112,7 @@ cdef class Santorini:
                         if (move_pos[0], move_pos[1]) in build_dests:
                             if self.board[move_pos[0], move_pos[1]] == self.winning_floor:
                                 return build_dests[(move_pos[0], move_pos[1])]
-                            if self.board[move_pos[0], move_pos[1]] + 1 == self.winning_floor:
+                            if self.board[move_pos[0], move_pos[1]] + 1 == self.winning_floor and self.board[pos[0], pos[1]] == self.winning_floor - 1:
                                 for i in build_dests[(move_pos[0], move_pos[1])]:
                                     legals.remove(i)
                             build_dests.pop((move_pos[0], move_pos[1]))
@@ -153,8 +153,40 @@ cdef class Santorini:
     def tostring(self, tuple state):
         return state[0].tostring() + state[1].tostring()
     
-    def get_symmetries(self, tuple state, pi):
-        return [((state[0].copy(), state[1].copy() * -state[4], state[2].copy(), {-1: state[3][-1].copy(), 1: state[3][1].copy()}, state[4]), pi)]
+    def get_symmetries(self, tuple state, pi, sym=False):
+        if not sym:
+            return [((state[0].copy(), state[1].copy(), state[2].copy(), {-1: state[3][-1].copy(), 1: state[3][1].copy()}, state[4]), pi)]
+        dir_board = np.array([['q', 'w', 'e'],
+                              ['a', ' ', 'd'],
+                              ['z', 'x', 'c']])
+        cdef list symmetries = [], env_workers
+        for rot in range(4):
+            new_buildings = np.rot90(state[0], rot)
+            new_workers = np.rot90(state[1].copy(), rot)
+            new_dir_board = np.rot90(dir_board, rot)
+            
+            for flip in [False, True]:
+                if flip:
+                    new_buildings = np.fliplr(new_buildings)
+                    new_workers = np.fliplr(new_workers)
+                    new_dir_board = np.fliplr(new_dir_board)
+                    
+                for swap_op in [False, True]:
+                    if swap_op:
+                        new_workers[state[3][1][0][0], state[3][1][0][1]], new_workers[state[3][1][1][0], state[3][1][1][1]] = 2, 1
+                
+                    for swap_cur in [False, True]:
+                        env_workers = [1, 2]
+                        if swap_cur:
+                            new_workers[state[3][-1][0][0], state[3][-1][0][1]], new_workers[state[3][-1][1][0], state[3][-1][1][1]] = -2, -1
+                            env_workers = [2, 1]
+                            
+                        new_pi = np.array([pi[self.atoi[(w, m, b)]] for w in env_workers \
+                                                                          for m in new_dir_board.ravel() \
+                                                                            for b in new_dir_board.ravel() \
+                                                                              if m != ' ' and b != ' '])
+                        symmetries.append(((new_buildings.copy(), new_workers.copy(), state[2].copy(), {-1: state[3][-1].copy(), 1: state[3][1].copy()}, state[4]), new_pi))
+        return symmetries
     
     def display(self, state):
         board, workers, parts, players, turn = state

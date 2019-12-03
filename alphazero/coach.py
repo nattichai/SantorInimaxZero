@@ -2,7 +2,7 @@ import os
 import gzip
 import numpy as np
 from pickle import Pickler, Unpickler
-from tqdm import tqdm
+from tqdm import tqdm_notebook
 from random import shuffle
 from .santorini import Santorini
 from .mcts import MCTS
@@ -23,7 +23,7 @@ class Coach:
 
             if not self.skip_first_selfplay or i > self.args.start_itr:
                 self.memories.append([])
-                for eps in tqdm(range(self.args.n_ep)):
+                for _ in tqdm_notebook(range(self.args.n_ep)):
                     self.run_episode()
             
             if self.args.slow_window:
@@ -74,8 +74,8 @@ class Coach:
             pi = self.mcts.get_action_prob(state, temp=int(step < self.args.no_temp_step))
             
             q = self.mcts.Qs[s]
-            for state, pi in self.game.get_symmetries(state, pi):
-                memory.append((state, self.game.current_player, pi, q))
+            for st, p in self.game.get_symmetries(state, pi, self.args.sym):
+                memory.append((st, self.game.current_player, p, q))
                 
             action = np.random.choice(len(pi), p=pi)
             state, reward, done, legals = self.game.step(action)
