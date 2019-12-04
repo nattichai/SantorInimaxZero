@@ -237,11 +237,11 @@ class Santorini:
 
 @njit
 def _walkable(
-        wid: int,
+        wid,
         dir: np.ndarray,
         workers: np.ndarray,
         board: np.ndarray,
-        winning_floor: int
+        winning_floor
 ):
     # check boundary
     src = workers[wid]
@@ -269,7 +269,7 @@ def _walkable(
 def _buildable(
         src: np.ndarray,
         dir: np.ndarray,
-        wid: int,
+        wid,
         workers: np.ndarray,
         board: np.ndarray,
         parts: np.ndarray,
