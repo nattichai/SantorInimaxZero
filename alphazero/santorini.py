@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit
+from numba import jit
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
@@ -235,41 +235,41 @@ class Santorini:
         plt.title(f'Current player: {current_player}')
         plt.show()
 
-@njit
+@jit('Tuple((b1, i8[:], b1))(i8, i8[:], i8[:, :], i1[:, :], i8)', nopython=True)
 def _walkable(
-        wid,
+        wid: int,
         dir: np.ndarray,
         workers: np.ndarray,
         board: np.ndarray,
-        winning_floor
+        winning_floor: int
 ):
     # check boundary
     src = workers[wid]
     new = src + dir
     board_dim = board.shape
-    if not (0 <= new[0] < board_dim[0]): return False, None, False
-    if not (0 <= new[1] < board_dim[1]): return False, None, False
+    if not (0 <= new[0] < board_dim[0]): return False, new, False
+    if not (0 <= new[1] < board_dim[1]): return False, new, False
 
     # not a dome
     tgt = board[new[0], new[1]]
-    if tgt == 4: return False, None, False
+    if tgt == 4: return False, new, False
 
     # not too high
     cur = board[src[0], src[1]]
-    if tgt > cur + 1: return False, None, False
+    if tgt > cur + 1: return False, new, False
 
     # no other worker
     for i in range(len(workers)):
         if workers[i][0] == new[0] and workers[i][1] == new[1]:
-            return False, None, False
+            return False, new, False
 
     return True, new, board[new[0], new[1]] == winning_floor
 
-@njit
+@jit('Tuple((b1, i8, i8[:]))(i8[:], i8[:], i8, i8[:, :], i1[:, :], i8[:])', nopython=True)
 def _buildable(
         src: np.ndarray,
         dir: np.ndarray,
-        wid,
+        wid: int,
         workers: np.ndarray,
         board: np.ndarray,
         parts: np.ndarray,
@@ -277,20 +277,20 @@ def _buildable(
     # check boundary
     new = src + dir
     board_dim = board.shape
-    if not (0 <= new[0] < board_dim[0]): return False, None, None
-    if not (0 <= new[1] < board_dim[1]): return False, None, None
+    if not (0 <= new[0] < board_dim[0]): return False, wid, new
+    if not (0 <= new[1] < board_dim[1]): return False, wid, new
 
     # not a dome
     tgt = board[new[0], new[1]]
-    if tgt == 4: return False, None, None
+    if tgt == 4: return False, wid, new
 
     # no other worker
     for i in range(len(workers)):
         if i != wid:
             if workers[i][0] == new[0] and workers[i][1] == new[1]:
-                return False, None, None
+                return False, wid, new
 
     # check parts
-    if parts[tgt + 1] == 0: return False, None, None
+    if parts[tgt + 1] == 0: return False, wid, new
 
     return True, tgt + 1, new
