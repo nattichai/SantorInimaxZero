@@ -10,7 +10,7 @@ class Santorini:
             board_dim=(5, 5),
             starting_parts=np.array([0, 22, 18, 14, 18]),
             winning_floor: int = 3,
-            auto_invert: bool = False,
+            auto_invert: bool = True,
             superpower: bool = False,
             n_win_dome: int = 5,
             force_move: bool = False):
@@ -101,6 +101,7 @@ class Santorini:
                     i = atoi[worker, move, build]
                     if is_win:
                         if force_move:
+                            self._legal_move_cache = [i]
                             return [i]
                         legals.append(i)
                         continue
@@ -109,6 +110,7 @@ class Santorini:
                     if buildable:
                         if force_move:
                             if superpower and part == 4 and starting_parts[4] - n_win_dome + 1 == parts[4]:
+                                self._legal_move_cache = [i]
                                 return [i]
                             if (built[0], built[1]) not in builts:
                                 builts[built[0], built[1]] = [i]
@@ -124,7 +126,8 @@ class Santorini:
                     walkable, moved, is_win = _walkable(wid, mdir, workers, board, winning_floor)
                     if walkable and (moved[0], moved[1]) in builts:
                         if is_win:
-                            return builts[moved[0], moved[1]]
+                            self._legal_move_cache = builts[moved[0], moved[1]]
+                            return self._legal_move_cache
                         if board[moved[0], moved[1]] == winning_floor - 1 and board[src[0], src[1]] == self.winning_floor - 1:
                             for i in builts[moved[0], moved[1]]:
                                 legals.remove(i)
