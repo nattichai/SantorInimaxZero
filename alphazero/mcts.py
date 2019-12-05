@@ -45,7 +45,12 @@ class MCTS:
             mask = np.zeros(self.game.action_size)
             mask[self.Vs[s]] = 1
             self.Ps[s] *= mask
-            self.Ps[s] /= sum(self.Ps[s])
+            if sum(self.Ps[s]) > 0:
+                self.Ps[s] /= sum(self.Ps[s])
+            else:
+                print('Warning: predict non-legal moves')
+                self.Ps[s] += mask
+                self.Ps[s] /= sum(self.Ps[s])
             return -v
         
         valid_moves = self.Vs[s]
