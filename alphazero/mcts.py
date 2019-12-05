@@ -49,7 +49,7 @@ class MCTS:
                 self.Ps[s] /= sum(self.Ps[s])
             else:
                 print('Warning: predict non-legal moves')
-                self.Ps[s] += mask
+                self.Ps[s] = mask
                 self.Ps[s] /= sum(self.Ps[s])
             return -v
         
