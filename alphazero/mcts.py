@@ -22,8 +22,9 @@ class MCTS:
         for _ in range(self.n_sims):
             self.game.set_state(state)
             self.search(state, s, root=True)
-            
-        counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.action_size)]
+        
+        Nsa = self.Nsa
+        counts = [Nsa[(s, a)] if (s, a) in Nsa else 0 for a in range(self.game.action_size)]
         
         if temp == 0:
             best_action = np.argmax(counts)
@@ -41,16 +42,17 @@ class MCTS:
             self.Ns[s] = 0
             if s not in self.Vs:
                 self.Vs[s] = self.game.legal_moves()
-            self.Ps[s], v = self.net.predict(state)
+            pi, v = self.net.predict(state)
             mask = np.zeros(self.game.action_size)
             mask[self.Vs[s]] = 1
-            self.Ps[s] *= mask
-            if sum(self.Ps[s]) > 0:
-                self.Ps[s] /= sum(self.Ps[s])
+            pi *= mask
+            if sum(pi) > 0:
+                pi /= sum(pi)
             else:
                 print('Warning: predict non-legal moves')
-                self.Ps[s] = mask
-                self.Ps[s] /= sum(self.Ps[s])
+                pi = mask
+                pi /= sum(pi)
+            self.Ps[s] = pi
             return -v
         
         valid_moves = self.Vs[s]
@@ -62,15 +64,21 @@ class MCTS:
         if root:
             epsilon = self.epsilon
             noise[valid_moves] = np.random.dirichlet([self.alpha] * len(valid_moves))
-                         
+
+        Ps = self.Ps[s]
+        Qsa = self.Qsa
+        Ns = self.Ns[s]
+        Nsa = self.Nsa
+        c_puct = self.c_puct
+        
         for a in valid_moves:
-            p = (1 - epsilon) * self.Ps[s][a] + epsilon * noise[a]
-            if (s, a) in self.Qsa:
-                q = self.Qsa[(s, a)]
-                u = self.c_puct * p * (self.Ns[s] ** 0.5) / (1 + self.Nsa[(s, a)])
+            p = (1 - epsilon) * Ps[a] + epsilon * noise[a]
+            if (s, a) in Qsa:
+                q = Qsa[(s, a)]
+                u = c_puct * p * (Ns ** 0.5) / (1 + Nsa[(s, a)])
             else:
                 q = 0
-                u = self.c_puct * p * ((self.Ns[s] + 1e-8) ** 0.5)
+                u = c_puct * p * ((Ns + 1e-8) ** 0.5)
             if q + u > best_qu:
                 best_qu = q + u
                 best_action = a

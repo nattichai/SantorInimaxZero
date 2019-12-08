@@ -1,8 +1,6 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow.python.compiler.tensorrt import trt_convert as trt
-from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 from tensorflow.keras.layers import *
 from tensorflow.keras.regularizers import *
 from tensorflow.keras.models import *
@@ -17,7 +15,7 @@ class SantoriniNet:
         self.val_size = self.args.val_size
         self.board_x, self.board_y = game.board_dim
         self.action_size = game.action_size
-        self.frozen_func = None
+        self.interpreter = None
         
     def prepare(self, state):
         return np.concatenate([[state[0] == i] for i in range(5)] + [[state[1] == p] for p in [1, 2, -1, -2]] + [[np.full((self.board_x, self.board_y), p)] for p in state[2][1:]]).astype(np.float32)
@@ -59,39 +57,27 @@ class SantoriniNet:
                                 verbose=2,
                                 callbacks=callbacks)
             
-        self.convert_to_tensorrt()
-        K.clear_session()
+        self.create_interpreter()
 
     def predict(self, board):
-        input_board = self.prepare(board)[None]
-        if self.frozen_func is None:
-            self.convert_to_tensorrt()
-        if self.frozen_func is not None:
-            pi, v = self.frozen_func(tf.convert_to_tensor(input_board))
-        else:
-            pi, v = self.nnet.model.predict_on_batch(input_board)
-        return pi.numpy()[0], v.numpy()[0, 0]
+        if self.interpreter is None:
+            self.create_interpreter()
+        self.interpreter.set_tensor(2, self.prepare(board)[None])
+        self.interpreter.invoke()
+        return self.interpreter.get_tensor(0)[0], self.interpreter.get_tensor(1)[0, 0]
 
     def save(self, filepath):
         self.nnet.model.save_weights(filepath)
 
     def load(self, filepath):
         self.nnet.model.load_weights(filepath)
-        self.convert_to_tensorrt()
+        self.create_interpreter()
     
-    def convert_to_tensorrt(self):
-        self.nnet.model.save('./checkpoint/save_model', save_format='tf')
-        if self.args.tensorrt_convert:
-            converter = trt.TrtGraphConverterV2(input_saved_model_dir='./checkpoint/save_model')
-            converter.convert()
-            converter.save('./checkpoint/tensorrt_model')
-
-            loaded_model = tf.saved_model.load('./checkpoint/tensorrt_model')
-            self.frozen_func = convert_variables_to_constants_v2(loaded_model.signatures['serving_default'])
-            
-        else:
-            loaded_model = tf.saved_model.load('./checkpoint/save_model')
-            self.frozen_func = convert_variables_to_constants_v2(loaded_model.signatures['serving_default'])
+    def create_interpreter(self):
+        converter = tf.lite.TFLiteConverter.from_keras_model(self.nnet.model)
+        model = converter.convert()
+        self.interpreter = tf.lite.Interpreter(model_content=model)
+        self.interpreter.allocate_tensors()
         
         
 class ChannelFirstToLast(Layer):

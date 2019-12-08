@@ -1,6 +1,3 @@
-import pyximport
-pyximport.install(language_level=3)
-
 from alphazero.santorini import Santorini
 from alphazero.santorininet import SantoriniNet
 from alphazero.coach import Coach
@@ -38,7 +35,6 @@ class CoachArgs:
     force_move: bool = EnvArgs.force_move
         
 class NetArgs:
-    tensorrt_convert: bool = False
     cyclic_lr: bool = True
     has_val: bool = True
     val_size: float = 0.2
