@@ -59,11 +59,19 @@ class Coach:
     def self_play(self, itr):
         while True:
             print('------ITER ' + str(itr) + '------')
+
             model_path = os.path.join(self.args.load_folder, 'model_' + str(itr - 1).zfill(4) + '.h5')
             self.net.load(model_path)
-            print('Loaded', model_path)
+            print('Loaded model', model_path)
 
-            self.memories = [[]]
+            memories_path = self.get_memory_file(itr - 1)
+            if os.path.isfile(memories_path):
+                with gzip.open(memories_path, "rb") as f:
+                    self.memories = Unpickler(f).load()
+                print('Loaded memories', memories_path)
+            else:
+                self.memories = [[]]
+                
             for _ in tqdm_notebook(range(self.args.n_ep)):
                 self.run_episode()
                 self.save_memories(itr - 1)
