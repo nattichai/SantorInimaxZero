@@ -67,10 +67,9 @@ class Coach:
             for _ in tqdm_notebook(range(self.args.n_ep)):
                 self.run_episode()
                 self.save_memories(itr - 1)
-                
                 if os.path.isfile(os.path.join(self.args.load_folder, 'model_' + str(itr).zfill(4) + '.h5')):
-                    itr += 1
                     break
+            itr += 1
                     
     def run_episode(self):
         memory = []
