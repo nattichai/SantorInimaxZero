@@ -13,7 +13,8 @@ class Santorini:
             auto_invert: bool = True,
             superpower: bool = False,
             n_win_dome: int = 5,
-            force_move: bool = False):
+            force_move: bool = False,
+            prepare_state: bool = False):
         self.board_dim = board_dim
         self.starting_parts = starting_parts
         self.winning_floor = winning_floor
@@ -21,6 +22,7 @@ class Santorini:
         self.superpower = superpower
         self.n_win_dome = n_win_dome
         self.force_move = force_move
+        self.prepare_state = prepare_state
 
         self.moves = ['q', 'w', 'e', 'a', 'd', 'z', 'x', 'c']
         self.builds = ['q', 'w', 'e', 'a', 'd', 'z', 'x', 'c']
@@ -217,6 +219,8 @@ class Santorini:
         return symmetries
 
     def display(self, state):
+        if self.prepare_state:
+            state = self.prepare(state)
         board, _, parts, workers, current_player = state
         _, ax = plt.subplots(figsize=(6, 6))
         im = ax.imshow(board, vmin=-0.5, vmax=4.5, cmap=plt.cm.get_cmap('Blues', 5), alpha=0.8)
@@ -237,6 +241,14 @@ class Santorini:
         ax.grid(color='k', linewidth=1)
         plt.title(f'Current player: {current_player}')
         plt.show()
+        
+    def prepare(self, state):
+        board = state[0].astype(np.int8)
+        wboard = state[1].astype(np.int8)
+        parts = state[2].diagonal()
+        workers = np.concatenate([[np.where(state[1] == i)] for i in [-1, -2, 1, 2]])[:, :, 0]
+        current_player = -1
+        return (board, wboard, parts, workers, current_player)
 
 @jit('Tuple((b1, i8[:], b1))(i8, i8[:], i8[:, :], i1[:, :], i8)', nopython=True)
 def _walkable(
