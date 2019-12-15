@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit
+from numba import njit
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
