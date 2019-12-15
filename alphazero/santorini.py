@@ -231,7 +231,7 @@ class Santorini:
         ax.text(workers[3][1], workers[3][0], 2, size=30, ha='center', va='center', color='g')
 
         cbar = plt.colorbar(im, ax=ax, ticks=range(5), shrink=0.8)
-        cbar.set_ticklabels([f'{i} floor: {parts[i]} parts' for i in range(5)])
+        cbar.set_ticklabels([f'{i} floor: {parts[i]} parts' for i in range(4)] + [f'dome: {parts[4]} parts'])
         cbar.ax.tick_params(labelsize=15)
 
         ax.set_xticklabels([])
@@ -250,7 +250,7 @@ class Santorini:
         current_player = -1
         return (board, wboard, parts, workers, current_player)
 
-@jit('Tuple((b1, i8[:], b1))(i8, i8[:], i8[:, :], i1[:, :], i8)', nopython=True)
+@njit
 def _walkable(
         wid: int,
         dir: np.ndarray,
@@ -280,7 +280,7 @@ def _walkable(
 
     return True, new, board[new[0], new[1]] == winning_floor
 
-@jit('Tuple((b1, i8, i8[:]))(i8[:], i8[:], i8, i8[:, :], i1[:, :], i8[:])', nopython=True)
+@njit
 def _buildable(
         src: np.ndarray,
         dir: np.ndarray,
