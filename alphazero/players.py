@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from SantoriniAI.alphazero.mcts import MCTS
+from .mcts import MCTS
 sns.set()
 
 class RandomPlayer:
