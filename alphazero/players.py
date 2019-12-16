@@ -18,7 +18,7 @@ class HumanPlayer:
     def play(self, state):
         while True:
             try:
-                a = input('worker move build')
+                a = input('Input your move (worker move build): ')
                 worker, move, build = a.split()
                 a = self.game.atoi[(abs(int(worker)), move, build)]
                 if a in self.game.legal_moves():
