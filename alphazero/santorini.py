@@ -232,7 +232,7 @@ class Santorini:
 
         cbar = plt.colorbar(im, ax=ax, ticks=range(5), shrink=0.8)
         cbar.set_ticklabels([f'{i} floor: {parts[i]} parts' for i in range(4)] + [f'Dome: {parts[4]} parts'])
-        cbar.ax.tick_params(labelsize=15)
+        cbar.ax.tick_params(labelsize=13)
 
         ax.set_xticklabels([])
         ax.set_yticklabels([])
