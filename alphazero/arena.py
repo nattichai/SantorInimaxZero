@@ -14,12 +14,14 @@ class Arena():
             action = players[self.game.current_player + 1](state)
             state, reward, done, _ = self.game.step(action)
             if done:
+                if verbose:
+                    self.display(state)
                 return reward * self.game.current_player
     
     def play_games(self, num, verbose=False):
-        num = int(num / 2)
+        half = int(num / 2)
         p1wins, p2wins = 0, 0
-        for _ in range(num):
+        for _ in range(half + (num % 2)):
             result = self.play_game(verbose=verbose)
             print(1 if result == 1 else 2, end='')
             if result == 1:
@@ -28,7 +30,7 @@ class Arena():
                 p2wins += 1
         self.player1, self.player2 = self.player2, self.player1
         print(' ', end='')
-        for _ in range(num):
+        for _ in range(half):
             result = self.play_game(verbose=verbose)
             print(2 if result == 1 else 1, end='')
             if result == 1:

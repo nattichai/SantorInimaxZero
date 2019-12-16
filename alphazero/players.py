@@ -17,13 +17,16 @@ class HumanPlayer:
 
     def play(self, state):
         while True:
-            a = input()
-            worker, move, build = a.split()
-            a = self.game.atoi[(int(worker), move, build)]
-            if a in self.game.legal_moves():
-                break
-            else:
-                print('Invalid move')
+            try:
+                a = input('worker move build')
+                worker, move, build = a.split()
+                a = self.game.atoi[(abs(int(worker)), move, build)]
+                if a in self.game.legal_moves():
+                    break
+                else:
+                    print('Illegal move')
+            except:
+                print('Invalid format')
         return a
 
 class AlphaPlayer:
