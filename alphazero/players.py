@@ -25,6 +25,8 @@ class HumanPlayer:
                     break
                 else:
                     print('Illegal move')
+            except KeyboardInterrupt:
+                raise
             except:
                 print('Invalid format')
         return a

@@ -1,4 +1,6 @@
 import numpy as np
+from numba import types
+from numba.typed import Dict
 from numba import njit
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -33,7 +35,6 @@ class Santorini:
         self.wtoi = {-1: 0, -2: 1, 1: 2, 2: 3}
         self.action_size = 128
         self._legal_move_cache = None
-        self._reward_cache = None
 
         self.reset()
 
@@ -51,7 +52,6 @@ class Santorini:
     def set_state(self, state):
         self._done = False
         self._legal_move_cache = None
-        self._reward_cache = None
         self._board, self._workers, self._parts, self.current_player = state[0].copy(), state[3].copy(), state[2].copy(), state[4]
 
     def reset(self):
@@ -66,7 +66,6 @@ class Santorini:
         self._parts = self.starting_parts.copy()
         self._done = False
         self._legal_move_cache = None
-        self._reward_cache = None
         return self.get_state()
 
     def legal_moves(self):
@@ -74,7 +73,7 @@ class Santorini:
         if self._legal_move_cache is not None:
             return self._legal_move_cache
         
-        self._legal_move_cache, self._reward_cache = _legal_moves(self._workers, self._board, self._parts, self.current_player, self.winning_floor, self.superpower, self.force_move, self.starting_parts, self.n_win_dome)
+        self._legal_move_cache = _legal_moves(self._workers, self._board, self._parts, self.current_player, self.winning_floor, self.superpower, self.force_move, self.starting_parts, self.n_win_dome)
         return self._legal_move_cache
 
     def step(self, action):
@@ -108,7 +107,6 @@ class Santorini:
 
         self.current_player *= -1
         self._legal_move_cache = None
-        self._reward_cache = None
         legals = self.legal_moves()
         
         if len(legals) == 0:
@@ -261,20 +259,10 @@ def _legal_moves(workers: np.ndarray,
     legals = []
     ktoc = np.asarray([(x, y) for x in [-1, 0, 1] for y in [-1, 0, 1] if x != 0 or y != 0])
     if force_move:
-        moves = [[-1] for _ in range(25)]
         builts = [[-1] for _ in range(25)]
-        checks = []
-        fars = []
-        al1 = workers[2 * (current_player > 0)]
-        al2 = workers[2 * (current_player > 0) + 1]
-        op1 = workers[2 * (current_player < 0)]
-        op2 = workers[2 * (current_player < 0) + 1]
-        mask = np.where(board == winning_floor - 1)
-        seconds = [np.array([mask[0][i], mask[1][i]]) for i in range(len(mask[0]))]
     
     for worker in range(2):
         wid = worker if current_player < 0 else worker + 2
-        al = workers[wid - worker + (not worker)]
         for move in range(8):
             mdir = ktoc[move]
             walkable, moved, is_win = _walkable(wid, mdir, workers, board, winning_floor)
@@ -283,7 +271,7 @@ def _legal_moves(workers: np.ndarray,
                     i = 64 * worker + 8 * move + build
                     if is_win:
                         if force_move:
-                            return [i], 1
+                            return [i]
                         legals.append(i)
                         continue
                     bdir = ktoc[build]
@@ -291,51 +279,21 @@ def _legal_moves(workers: np.ndarray,
                     if buildable:
                         if force_move:
                             if superpower and part == 4 and starting_parts[4] - n_win_dome + 1 == parts[4]:
-                                return [i], 1
+                                return [i]
                             builts[built[0] * 5 + built[1]].append(i)
-                            if part == winning_floor and \
-                                (board[moved[0], moved[1]] == winning_floor - 1 or \
-                                (board[al[0], al[1]] == winning_floor - 1 and max(np.abs(al - built)) == 1)):
-                                    if max(np.abs(op1 - built)) > 2 and max(np.abs(op2 - built)) > 2:
-                                        checks.append(i)
-                            else:
-                                for second in seconds:
-                                    if max(np.abs(moved - second)) > 2 and max(np.abs(al - second)) > 2:
-                                        moves[second[0] * 5 + second[1]].append(i)
                         legals.append(i)
     if force_move:
-        legals_cop = legals.copy()
         for worker in range(2):
             wid = worker if current_player > 0 else worker + 2
             src = workers[wid]
-            op = workers[wid - worker + (not worker)]
             for move in range(8):
                 mdir = ktoc[move]
                 walkable, moved, is_win = _walkable(wid, mdir, workers, board, winning_floor)
-                if walkable:
-                    if len(builts[moved[0] * 5 + moved[1]]) > 1:
-                        if is_win:
-                            return builts[moved[0] * 5 + moved[1]][1:], 0
-                        if board[moved[0], moved[1]] == winning_floor - 1 and board[src[0], src[1]] == winning_floor - 1:
-                            for i in builts[moved[0] * 5 + moved[1]][1:]:
-                                legals.remove(i)
-                        builts[moved[0] * 5 + moved[1]] = [-1]
-                    if len(checks) == 0:
-                        for build in range(8):
-                            bdir = ktoc[build]
-                            buildable, part, built = _buildable(moved, bdir, wid, workers, board, parts)
-                            if buildable:
-                                if part == winning_floor and \
-                                    (board[moved[0], moved[1]] == winning_floor - 1 or \
-                                    (board[op[0], op[1]] == winning_floor - 1 and max(np.abs(op - built)) == 1)) and \
-                                        (max(np.abs(al1 - built)) > 2 or max(np.abs(al2 - built)) > 2):
-                                    fars.append(built[0] * 5 + built[1])
-        if len(checks) > 0:
-            return checks, 1
-        for far in fars:
-            for i in moves[far][1:]:
-                if i in legals:
-                    legals.remove(i)
-        if len(legals) == 0:
-            return legals_cop, -1
-    return legals, 0
+                if walkable and len(builts[moved[0] * 5 + moved[1]]) > 1:
+                    if is_win:
+                        return builts[moved[0] * 5 + moved[1]][1:]
+                    if board[moved[0], moved[1]] == winning_floor - 1 and board[src[0], src[1]] == winning_floor - 1:
+                        for i in builts[moved[0] * 5 + moved[1]][1:]:
+                            legals.remove(i)
+                    builts[moved[0] * 5 + moved[1]] = [-1]
+    return legals

@@ -104,6 +104,9 @@ class Coach:
             state, reward, done, legals = self.game.step(action)
             s = self.game.tostring(state)
             self.mcts.Vs[s] = legals
+            self.mcts.Es[s] = self.game._reward_cache
+            if self.game._reward_cache != 0:
+                done, reward = True, self.game._reward_cache
             
             if done:
                 if self.args.avg_zq:
