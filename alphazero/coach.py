@@ -102,11 +102,9 @@ class Coach:
                 
             action = np.random.choice(len(pi), p=pi)
             state, reward, done, legals = self.game.step(action)
-            s = self.game.tostring(state)
-            self.mcts.Vs[s] = legals
-            self.mcts.Es[s] = self.game._reward_cache
-            if self.game._reward_cache != 0:
-                done, reward = True, self.game._reward_cache
+
+            if not done and self.game._reward_cache != 0:
+                done, reward = True, -self.game._reward_cache
             
             if done:
                 if self.args.avg_zq:
@@ -114,6 +112,9 @@ class Coach:
                 else:
                     self.memories[-1] += [(state, pi, reward * (-1) ** (player == self.game.current_player)) for state, player, pi, q in memory]
                 return
+            else:
+                s = self.game.tostring(state)
+                self.mcts.Vs[s] = legals
         
     def save_memories(self, i):
         if not os.path.exists(self.args.checkpoint):

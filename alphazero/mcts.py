@@ -25,15 +25,18 @@ class MCTS:
             self.search(state, s, root=True)
         
         Nsa = self.Nsa
-        counts = [Nsa[(s, a)] if (s, a) in Nsa else 0 for a in range(self.game.action_size)]
+        counts = np.array([Nsa[(s, a)] if (s, a) in Nsa else 0 for a in range(self.game.action_size)])
+        if counts.sum() == 0:
+            self.game.set_state(state)
+            counts[self.game.legal_moves()] = 1
         
         if temp == 0:
-            best_action = np.argmax(counts)
+            best_action = np.random.choice(np.argwhere(counts == counts.max()).ravel())
             probs = np.zeros(self.game.action_size)
             probs[best_action] = 1
         else:
-            counts = np.array([c ** (1. / temp) for c in counts])
-            probs = counts / float(sum(counts))
+            counts **= (1 / temp)
+            probs = counts / counts.sum()
 
         return probs
 
@@ -53,12 +56,12 @@ class MCTS:
             mask = np.zeros(self.game.action_size)
             mask[self.Vs[s]] = 1
             pi *= mask
-            if sum(pi) > 0:
-                pi /= sum(pi)
+            sum_py = pi.sum()
+            if sum_py > 0:
+                pi /= sum_py
             else:
-                print('Warning: predict non-legal moves')
-                pi = mask
-                pi /= sum(pi)
+                print('Warning: all predicted moves are illegal')
+                pi = mask / mask.sum()
             self.Ps[s] = pi
             return -v
         
@@ -92,14 +95,18 @@ class MCTS:
                 
         a = best_action
         state, reward, done, legals = self.game.step(a)
-        self.Es[s] = self.game._reward_cache
+        if not done and self.game._reward_cache != 0:
+            done, reward = True, -self.game._reward_cache
+
+        self.Es[s] = reward
+        
+        ss = self.game.tostring(state)
+        self.Vs[ss] = legals
+        self.Es[ss] = -reward
+
         if done:
             v = reward
-        elif self.Es[s] != 0:
-            v = self.Es[s]
         else:
-            ss = self.game.tostring(state)
-            self.Vs[ss] = legals
             v = self.search(state, ss)
         
         if (s, a) in self.Qsa:
