@@ -18,11 +18,19 @@ class HumanPlayer:
     def play(self, state):
         while True:
             try:
-                a = input('''
+                if self.game.current_player == -1:
+                    a = input('''
 Worker: -1, -2   Move: q w e   Build: q w e
                        a   d          a   d
                        z x c          z x c
 Input your move: ''')
+                else:
+                    a = input('''
+Worker: 1, 2   Move: q w e   Build: q w e
+                     a   d          a   d
+                     z x c          z x c
+Input your move: ''')
+
                 worker, move, build = a.split()
                 a = self.game.atoi[(abs(int(worker)), move, build)]
                 if a in self.game.legal_moves():
@@ -118,15 +126,18 @@ class MinimaxZeroPlayer:
             state = prepare(state)
         action = self.minimax_player.play(state)
         values_cache = self.minimax_player.values_cache
-        print('Minimax value:', values_cache.max())
+        if self.show_pred:
+            print('Minimax value:', values_cache.max())
         if values_cache.max() <= 0:
-            print('Minimax cannot find a solution, switch to AlphaZero')
+            if self.show_pred:
+                print('Minimax cannot find a solution, switch to AlphaZero')
             self.alpha_player.play(state)
             action_prob = self.alpha_player.action_prob
             if values_cache.max() == 0:
                 action_prob *= (values_cache == 0)
             if action_prob.sum() == 0:
-                print('AlphaZero cannot find a solution, switch back to Minimax')
+                if self.show_pred:
+                    print('AlphaZero cannot find a solution, switch back to Minimax')
                 return action
             action = np.argmax(action_prob)
             if self.show_pred:
