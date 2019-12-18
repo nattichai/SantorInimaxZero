@@ -169,7 +169,7 @@ class Santorini:
         ax.text(workers[3][1], workers[3][0], 2, size=30, ha='center', va='center', color='g')
 
         cbar = plt.colorbar(im, ax=ax, ticks=range(5), shrink=0.8)
-        cbar.set_ticklabels([f'{i} floor: {parts[i]} parts' for i in range(4)] + [f'Dome: {parts[4]} parts'])
+        cbar.set_ticklabels(['Ground'] + [f'Level {i}: {parts[i]} parts' for i in range(1, 4)] + [f'Dome: {parts[4]} parts'])
         cbar.ax.tick_params(labelsize=13)
 
         ax.set_xticklabels([])
