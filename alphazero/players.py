@@ -106,7 +106,7 @@ class MinimaxPlayer:
             return values
         return alpha
 
-class AlphaMinimaxPlayer:
+class MinimaxZeroPlayer:
     def __init__(self, make_game, net, depth=4, n_sims=100, c_puct=1, show_pred=False, prepare_state=False):
         self.alpha_player = AlphaPlayer(make_game, net, n_sims=n_sims, c_puct=c_puct)
         self.minimax_player = MinimaxPlayer(make_game, depth)
