@@ -15,7 +15,6 @@ class MCTS:
         self.Ns = {}
         self.Ps = {}
         self.Vs = {}
-        self.Es = {}
 
     def get_action_prob(self, state, temp=1):
         s = self.game.tostring(state)
@@ -35,23 +34,17 @@ class MCTS:
             probs = np.zeros(self.game.action_size)
             probs[best_action] = 1
         else:
-            counts **= (1 / temp)
+            counts = counts ** (1 / temp)
             probs = counts / counts.sum()
 
         return probs
 
     def search(self, state, s, root=False):
-        if s in self.Es and self.Es[s] != 0:
-            return -self.Es[s]
-
         if s not in self.Ns:
             self.Qs[s] = 0
             self.Ns[s] = 0
             if s not in self.Vs:
                 self.Vs[s] = self.game.legal_moves()
-                self.Es[s] = self.game._reward_cache
-                if self.Es[s] != 0:
-                    return -self.Es[s]
             pi, v = self.net.predict(state)
             mask = np.zeros(self.game.action_size)
             mask[self.Vs[s]] = 1
@@ -97,12 +90,9 @@ class MCTS:
         state, reward, done, legals = self.game.step(a)
         if not done and self.game._reward_cache != 0:
             done, reward = True, -self.game._reward_cache
-
-        self.Es[s] = reward
         
         ss = self.game.tostring(state)
         self.Vs[ss] = legals
-        self.Es[ss] = -reward
 
         if done:
             v = reward

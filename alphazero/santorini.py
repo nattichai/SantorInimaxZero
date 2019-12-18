@@ -261,81 +261,124 @@ def _legal_moves(workers: np.ndarray,
     legals = []
     ktoc = np.asarray([(x, y) for x in [-1, 0, 1] for y in [-1, 0, 1] if x != 0 or y != 0])
     if force_move:
-        moves = [[-1] for _ in range(25)]
-        builts = [[-1] for _ in range(25)]
-        checks = []
-        fars = []
+        w_board = np.zeros((5, 5))
+        w_board[workers[0][0], workers[0][1]] = -1
+        w_board[workers[1][0], workers[1][1]] = -2
+        w_board[workers[2][0], workers[2][1]] = 1
+        w_board[workers[3][0], workers[3][1]] = 2
+        
         al1 = workers[2 * (current_player > 0)]
         al2 = workers[2 * (current_player > 0) + 1]
         op1 = workers[2 * (current_player < 0)]
         op2 = workers[2 * (current_player < 0) + 1]
-        mask = np.where(board == winning_floor - 1)
-        seconds = [np.array([mask[0][i], mask[1][i]]) for i in range(len(mask[0]))]
-    
+        blocks = None
+        prepare = False
+        winnings = []
+
     for worker in range(2):
-        wid = worker if current_player < 0 else worker + 2
-        al = workers[wid - worker + (not worker)]
+        src = al1 if worker == 0 else al2
+        al = al2 if worker == 0 else al1
         for move in range(8):
-            mdir = ktoc[move]
-            walkable, moved, is_win = _walkable(wid, mdir, workers, board, winning_floor)
-            if walkable:
+            moved = src + ktoc[move]
+            high = board[moved[0], moved[1]]
+            if 0 <= moved[0] and moved[0] < 5 and 0 <= moved[1] and moved[1] < 5 and \
+                w_board[moved[0], moved[1]] == 0 and high - board[src[0], src[1]] <= 1 and high != 4:
                 for build in range(8):
-                    i = 64 * worker + 8 * move + build
-                    if is_win:
+                    action = 64 * worker + 8 * move + build
+                    if high == winning_floor:
                         if force_move:
-                            return [i], 1
-                        legals.append(i)
+                            return [action], 1 # Instant win
+                        legals.append(action)
                         continue
-                    bdir = ktoc[build]
-                    buildable, part, built = _buildable(moved, bdir, wid, workers, board, parts)
-                    if buildable:
+                    built = moved + ktoc[build]
+                    part = board[built[0], built[1]] + 1
+                    if 0 <= built[0] and built[0] < 5 and 0 <= built[1] and built[1] < 5 and \
+                        (w_board[built[0], built[1]] == 0 or (built[0] == src[0] and built[1] == src[1])) and part <= 4 and parts[part] > 0:
                         if force_move:
                             if superpower and part == 4 and starting_parts[4] - n_win_dome + 1 == parts[4]:
-                                return [i], 1
-                            builts[built[0] * 5 + built[1]].append(i)
-                            if part == winning_floor and \
-                                (board[moved[0], moved[1]] == winning_floor - 1 or \
-                                (board[al[0], al[1]] == winning_floor - 1 and max(np.abs(al - built)) == 1)):
-                                    if max(np.abs(op1 - built)) > 2 and max(np.abs(op2 - built)) > 2:
-                                        checks.append(i)
-                            else:
-                                for second in seconds:
-                                    if max(np.abs(moved - second)) > 2 and max(np.abs(al - second)) > 2:
-                                        moves[second[0] * 5 + second[1]].append(i)
-                        legals.append(i)
+                                return [action], 1 # Instant win
+                            if part == winning_floor and ((board[op1[0], op1[1]] == winning_floor - 1 and max(np.abs(op1 - built)) == 1) or \
+                                (board[op2[0], op2[1]] == winning_floor - 1 and max(np.abs(op2 - built)) == 1)):
+                                continue # Never give a win
+                            if blocks is None:
+                                blocks = [[-1] for _ in range(25)]
+                            blocks[built[0] * 5 + built[1]].append(action) # Prepare instant blocking
+                            legals.append(action)
+
+                            if not prepare:
+                                prepare = True
+                                fars = np.zeros((5, 5), dtype=np.bool_)
+                                for i in range(5):
+                                    for j in range(5):
+                                        if (abs(i - op1[0]) > 2 or abs(j - op1[1]) > 2) and \
+                                            (abs(i - op2[0]) > 2 or abs(j - op2[1]) > 2):
+                                            fars[i, j] = 1
+                                
+                                thirds = np.zeros((5, 5), dtype=np.int8)
+                                forks = np.zeros((5, 5), dtype=np.int8)
+                                for i in range(5):
+                                    for j in range(5):
+                                        if board[i][j] != winning_floor - 1 or w_board[i, j] != 0:
+                                            continue
+                                        cur = np.array([i, j])
+                                        cnt2 = 0
+                                        cnt3 = 0
+                                        for dir in range(8):
+                                            near = cur + ktoc[dir]
+                                            if near[0] < 0 or near[0] >= 5 or near[1] < 0 or near[1] >= 5 or w_board[near[0], near[1]] != 0:
+                                                continue
+                                            if board[near[0], near[1]] == winning_floor - 1:
+                                                cnt2 = dir + 1
+                                            elif board[near[0], near[1]] == winning_floor:
+                                                if cnt3 == 0:
+                                                    cnt3 = dir + 1
+                                                else:
+                                                    cnt3 += 10 * (dir + 1)
+                                        if cnt3 != 0:
+                                            thirds[i, j] = cnt3
+                                        if cnt2 != 0 and cnt3 != 0:
+                                            forks[i, j] = cnt2 # Prepare fork winning
+                                        elif cnt3 >= 10:
+                                            forks[i, j] = -cnt3 # Prepare fork winning
+
+                            if high == winning_floor - 1:
+                                fork = forks[moved[0], moved[1]]
+                                if fork != 0:
+                                    if fork > 0:
+                                        if build == fork - 1:
+                                            winnings.append(action) # Fork to win
+                                    elif build != (-fork // 10) - 1 and build != (-fork % 10) - 1:
+                                        winnings.append(action) # Fork to win
+                                else:
+                                    third = thirds[moved[0], moved[1]]
+                                    if third != 0 and build != third - 1:
+                                        d = ktoc[third - 1]
+                                        if fars[moved[0] + d[0]][moved[1] + d[1]] == 1:
+                                            winnings.append(action) # Faraway winning
+
+                            if part == winning_floor and (high == winning_floor - 1 or (board[al[0], al[1]] == winning_floor - 1 and max(np.abs(al - built)) == 1)):
+                                if fars[built[0], built[1]] == 1:
+                                    winnings.append(action) # Faraway winning
+                        else:
+                            legals.append(action)
     if force_move:
         legals_cop = legals.copy()
         for worker in range(2):
-            wid = worker if current_player > 0 else worker + 2
-            src = workers[wid]
-            op = workers[wid - worker + (not worker)]
+            src = op1 if worker == 0 else op2
             for move in range(8):
-                mdir = ktoc[move]
-                walkable, moved, is_win = _walkable(wid, mdir, workers, board, winning_floor)
-                if walkable:
-                    if len(builts[moved[0] * 5 + moved[1]]) > 1:
-                        if is_win:
-                            return builts[moved[0] * 5 + moved[1]][1:], 0
-                        if board[moved[0], moved[1]] == winning_floor - 1 and board[src[0], src[1]] == winning_floor - 1:
-                            for i in builts[moved[0] * 5 + moved[1]][1:]:
-                                legals.remove(i)
-                        builts[moved[0] * 5 + moved[1]] = [-1]
-                    if len(checks) == 0:
-                        for build in range(8):
-                            bdir = ktoc[build]
-                            buildable, part, built = _buildable(moved, bdir, wid, workers, board, parts)
-                            if buildable:
-                                if part == winning_floor and \
-                                    (board[moved[0], moved[1]] == winning_floor - 1 or \
-                                    (board[op[0], op[1]] == winning_floor - 1 and max(np.abs(op - built)) == 1)) and \
-                                        (max(np.abs(al1 - built)) > 2 or max(np.abs(al2 - built)) > 2):
-                                    fars.append(built[0] * 5 + built[1])
-        if len(checks) > 0:
-            return checks, 1
-        for far in fars:
-            for i in moves[far][1:]:
-                if i in legals:
-                    legals.remove(i)
+                moved = src + ktoc[move]
+                high = board[moved[0], moved[1]]
+                if 0 <= moved[0] and moved[0] < 5 and 0 <= moved[1] and moved[1] < 5 and \
+                    w_board[moved[0], moved[1]] == 0 and high - board[src[0], src[1]] <= 1 and high != 4:
+                    if high == winning_floor:
+                        if len(blocks[moved[0] * 5 + moved[1]]) > 1:
+                            return blocks[moved[0] * 5 + moved[1]][1:], 0 # Instant blocking
+                        else:
+                            return legals_cop, -1 # Cannot blocking
+        
+        if len(winnings) > 0:
+            return winnings, 1 # Fork to win or Faraway winning
+            
         if len(legals) == 0:
-            return legals_cop, -1
+            return legals_cop, -1 # No move left
     return legals, 0
