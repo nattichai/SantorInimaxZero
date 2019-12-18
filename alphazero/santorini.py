@@ -260,17 +260,17 @@ def _legal_moves(workers: np.ndarray,
                  n_win_dome: int):
     legals = []
     ktoc = np.asarray([(x, y) for x in [-1, 0, 1] for y in [-1, 0, 1] if x != 0 or y != 0])
+    w_board = np.zeros((5, 5))
+    w_board[workers[0][0], workers[0][1]] = -1
+    w_board[workers[1][0], workers[1][1]] = -2
+    w_board[workers[2][0], workers[2][1]] = 1
+    w_board[workers[3][0], workers[3][1]] = 2
+    
+    al1 = workers[2 * (current_player > 0)]
+    al2 = workers[2 * (current_player > 0) + 1]
+    op1 = workers[2 * (current_player < 0)]
+    op2 = workers[2 * (current_player < 0) + 1]
     if force_move:
-        w_board = np.zeros((5, 5))
-        w_board[workers[0][0], workers[0][1]] = -1
-        w_board[workers[1][0], workers[1][1]] = -2
-        w_board[workers[2][0], workers[2][1]] = 1
-        w_board[workers[3][0], workers[3][1]] = 2
-        
-        al1 = workers[2 * (current_player > 0)]
-        al2 = workers[2 * (current_player > 0) + 1]
-        op1 = workers[2 * (current_player < 0)]
-        op2 = workers[2 * (current_player < 0) + 1]
         blocks = None
         prepare = False
         winnings = []

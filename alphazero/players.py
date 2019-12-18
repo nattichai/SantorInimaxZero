@@ -19,9 +19,9 @@ class HumanPlayer:
         while True:
             try:
                 a = input('''
-Worker: 1, 2   Move: q w e   Build: q w e
-                     a   d          a   d
-                     z x c          z x c
+Worker: -1, -2   Move: q w e   Build: q w e
+                       a   d          a   d
+                       z x c          z x c
 Input your move: ''')
                 worker, move, build = a.split()
                 a = self.game.atoi[(abs(int(worker)), move, build)]
