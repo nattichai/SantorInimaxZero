@@ -371,7 +371,7 @@ def _legal_moves(workers: np.ndarray,
                 if 0 <= moved[0] and moved[0] < 5 and 0 <= moved[1] and moved[1] < 5 and \
                     w_board[moved[0], moved[1]] == 0 and high - board[src[0], src[1]] <= 1 and high != 4:
                     if high == winning_floor:
-                        if len(blocks[moved[0] * 5 + moved[1]]) > 1:
+                        if blocks is not None and len(blocks[moved[0] * 5 + moved[1]]) > 1:
                             return blocks[moved[0] * 5 + moved[1]][1:], 0 # Instant blocking
                         else:
                             return legals_cop, -1 # Cannot blocking
